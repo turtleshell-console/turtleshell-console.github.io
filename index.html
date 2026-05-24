@@ -1,1 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Desktop Environment</title>
+    <style>
+        :root {
+            --bg-color: #2e3440;
+            --bar-color: #1e222a;
+            --win-color: #3b4252;
+            --text-color: #d8dee9;
+            --accent-color: #88c0d0;
+            --active-color: #4c566a;
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #desktop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 45px;
+            overflow: hidden;
+        }
+
+        #taskbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 45px;
+            background-color: var(--bar-color);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 10px;
+            z-index: 99999;
+            border-top: 1px solid #434c5e;
+        }
+
+        .taskbar-btn {
+            height: 32px;
+            padding: 0 12px;
+            background-color: var(--win-color);
+            border: 1px solid #4c566a;
+            color: var(--text-color);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .taskbar-btn:hover {
+            background-color: var(--active-color);
+        }
+
+        #start-btn {
+            background-color: var(--accent-color);
+            color: #2e3440;
+            font-family: monospace;
+            font-size: 16px;
+        }
+
+        #start-btn:hover {
+            background-color: #8fbcbb;
+        }
+
+        .window {
+            position: absolute;
+            width: 600px;
+            height: 400px;
+            background-color: var(--win-color);
+            border: 1px solid #4c566a;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 200px;
+            min-height: 100px;
+        }
+
+        .title-bar {
+            height: 35px;
+            background-color: #232831;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            cursor: move;
+            border-bottom: 1px solid #3b4252;
+        }
+
+        .title-text {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 6px;
+        }
+
+        .win-btn {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: rgba(0,0,0,0.5);
+            font-weight: bold;
+        }
+
+        .btn-min { background-color: #ebcb8b; }
+        .btn-max { background-color: #a3be8c; }
+        .btn-close { background-color: #bf616a; }
+
+        .window-content {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        .window-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+        }
+
+        .iframe-shield {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="desktop"></div>
+
+    <div id="taskbar">
+        <button id="start-btn" class="taskbar-btn" title="Open Terminal">[&gt;_]</button>
+    </div>
+
+    <script>
+        const desktop = document.getElementById('desktop');
+        const taskbar = document.getElementById('taskbar');
+        const startBtn = document.getElementById('start-btn');
+
+        let consoleCount = 0;
+        let activeZIndex = 100;
+
+        startBtn.addEventListener('click', createConsole);
+
+        function createConsole() {
+            consoleCount++;
+            const id = `console-${consoleCount}`;
+            const title = `console${consoleCount}`;
+
+            // Create window element
+            const win = document.createElement('div');
+            win.id = id;
+            win.className = 'window';
+            win.style.left = `${50 + (consoleCount * 25) % 200}px`;
+            win.style.top = `${50 + (consoleCount * 25) % 200}px`;
+            win.style.zIndex = ++activeZIndex;
+
+            // Save restore states
+            win.dataset.state = 'normal'; 
+            win.dataset.title = title;
+
+            win.innerHTML = `
+                <div class="title-bar">
+                    <div class="title-text">${title}</div>
+                    <div class="window-controls">
+                        <button class="win-btn btn-min" title="Minimize">─</button>
+                        <button class="win-btn btn-max" title="Maximize">▢</button>
+                        <button class="win-btn btn-close" title="Close">✕</button>
+                    </div>
+                </div>
+                <div class="window-content">
+                    <div class="iframe-shield"></div>
+                    <iframe src="./shell.js"></iframe>
+                </div>
+            `;
+
+            desktop.appendChild(win);
+
+            // Create taskbar item
+            const tab = document.createElement('button');
+            tab.className = 'taskbar-btn';
+            tab.id = `tab-${id}`;
+            tab.textContent = title;
+            taskbar.appendChild(tab);
+
+            // Setup events
+            setupWindowEvents(win, tab);
+            focusWindow(win);
+        }
+
+        function setupWindowEvents(win, tab) {
+            const titleBar = win.querySelector('.title-bar');
+            const minBtn = win.querySelector('.btn-min');
+            const maxBtn = win.querySelector('.btn-max');
+            const closeBtn = win.querySelector('.btn-close');
+            const shield = win.querySelector('.iframe-shield');
+
+            // Focus on click
+            win.addEventListener('mousedown', () => focusWindow(win));
+
+            // Window controls
+            minBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                win.style.display = 'none';
+                win.dataset.state = 'minimized';
+            });
+
+            maxBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMaximize(win);
+            });
+
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                win.remove();
+                tab.remove();
+            });
+
+            // Taskbar tab action
+            tab.addEventListener('click', () => {
+                if (win.style.display === 'none' || win.dataset.state === 'minimized') {
+                    win.style.display = 'flex';
+                    win.dataset.state = 'normal';
+                    focusWindow(win);
+                } else if (win.style.zIndex == activeZIndex) {
+                    win.style.display = 'none';
+                    win.dataset.state = 'minimized';
+                } else {
+                    focusWindow(win);
+                }
+            });
+
+            // Dragging system
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            titleBar.addEventListener('mousedown', (e) => {
+                if (win.dataset.state === 'maximized') return;
+                
+                isDragging = true;
+                shield.style.display = 'block'; // Block iframe capture
+                focusWindow(win);
+
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = win.offsetLeft;
+                initialTop = win.offsetTop;
+
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+
+            function drag(e) {
+                if (!isDragging) return;
+                let newLeft = initialLeft + (e.clientX - startX);
+                let newTop = initialTop + (e.clientY - startY);
+
+                // Bound checking against boundaries
+                if (newTop < 0) newTop = 0;
+                
+                win.style.left = `${newLeft}px`;
+                win.style.top = `${newTop}px`;
+            }
+
+            function stopDrag() {
+                isDragging = false;
+                shield.style.display = 'none';
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        }
+
+        function focusWindow(win) {
+            if(win.style.display === 'none') return;
+            activeZIndex++;
+            win.style.zIndex = activeZIndex;
+        }
+
+        function toggleMaximize(win) {
+            if (win.dataset.state !== 'maximized') {
+                // Store old values
+                win.dataset.oldLeft = win.style.left;
+                win.dataset.oldTop = win.style.top;
+                win.dataset.oldWidth = win.style.width;
+                win.dataset.oldHeight = win.style.height;
+
+                // Maximize
+                win.style.left = '0px';
+                  win.style.top = '0px';win.style.width = '100%';win.style.height = '100%';win.dataset.state = 'maximized';} else {// Restore valueswin.style.left = win.dataset.oldLeft;win.style.top = win.dataset.oldTop;win.style.width = win.dataset.oldWidth;win.style.height = win.dataset.oldHeight;win.dataset.state = 'normal';}}
